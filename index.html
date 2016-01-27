@@ -1,0 +1,83 @@
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    td.blue {
+      background-color: blue;
+    }
+    td.purple {
+      background-color: purple;
+    }
+  </style>
+</head>
+
+<body>
+  <table id="tallysheet">
+    <thead>
+      <tr>
+        <th>Containers</th>
+        <th></th>
+        <th>Meal 1</th>
+        <th>Meal 2</th>
+        <th>Meal 3</th>
+        <th>Meal 4</th>
+        <th>Meal 5</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody data-bind="foreach: containers">
+      <tr>
+        <td data-bind="css: color"></td>
+        <!-- ko foreach: meals -->
+        <td>
+          <input data-bind="value: $data" />
+        </td>
+        <!-- /ko -->
+        <td data-bind="text: total()">
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <script>
+    (function() {
+      var numMeals = 5
+      var model = {
+        containers: [
+          new Container("blue"),
+          new Container("purple")
+        ]
+      };
+
+      function Container(color) {
+        this.color = color;
+        this.meals = _initMeals(numMeals);
+
+        var _self = this;
+
+        this.total = ko.computed(function() {
+          return _self.meals
+            .map(function(a) { return a(); })
+            .reduce(function(a, b) { return a + b; });
+        });
+      }
+
+
+      function _initMeals(count) {
+        var meals = []
+        for(var i = 0; i < count; i++)
+          meals[i] = ko.observable(0);
+
+        return meals;
+      }
+
+      var tallysheet = document.getElementById("tallysheet");
+      ko.applyBindings(model);
+    })();
+  </script>
+</body>
