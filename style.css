@@ -66,6 +66,43 @@ html, body {
   transform: rotate(-90deg);
   background-size: 100%;
 }
+#water input[type='checkbox'] {
+  display: none;
+}
+#water > div {
+  display: flex;
+  padding: 0 0.5px
+}
+#water label {
+  display: block;
+  position: relative;
+  height: 40px;
+  background-color: #ddd;
+  flex-grow: 1;
+  margin: 0 0.5px;
+}
+#water input[type='checkbox']:checked + label::after {
+  content: "";
+  background: url("/images/checkbox.png");
+  background-size: 100%;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  position: absolute;
+}
+#water .title {
+  text-transform: uppercase;
+  line-height: 40px;
+  vertical-align: middle;
+  text-align: center;
+  background-color: #A0A0FB;
+  color: white;
+  flex-basis: 4.6%;
+}
+#water .completed {
+  background-color: #e9cc8b;
+}
 #pager a {
   float: left;
   width: 50%;

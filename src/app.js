@@ -1,119 +1,178 @@
 (function() {
   var _numMeals = 5
-  var _localModel = JSON.parse(window.localStorage.getItem(_getDate()));
+  var _storage = JSON.parse(window.localStorage.getItem(_getDate()));
+  if (!_storage) _storage = {};
   var _views = [];
 
-  var TallySheet = {};
-  _views.push(TallySheet);
+  window.addEventListener('storageupdated', function() {
+    var key = _getDate();
+    window.localStorage.setItem(key, JSON.stringify(_storage));
+  });
 
-  TallySheet.Model = function(numMeals) {
-    this.containers = [
-      new Container('green'),
-      new Container('purple'),
-      new Container('red'),
-      new Container('yellow'),
-      new Container('blue'),
-      new Container('orange'),
-      new Container('spoon')
-    ];
-    this.meals = range(numMeals, 1);
+
+  class View {
+    constructor(elem, model) {
+      this.elem = elem;
+      this.model = model;
+    }
+
+    render() {
+      this.elem.innerHTML = this.template(this.model);
+    }
+
+    template(model) { return ''; }
+  }
+
+  var TallySheet = {};
+  TallySheet.View = class extends View {
+    render() {
+      super.render();
+      var self = this;
+      [].forEach.call(document.querySelectorAll('.serving-size'), function(e) {
+          e.addEventListener('change', function(e) {
+            var index = e.target.dataset.id;
+            var row = e.target.parentElement.parentElement;
+            var rowNum = row.dataset.row;
+            self.model.containers[rowNum].meals[index] = e.target.valueAsNumber;
+            row.querySelector('td.total').innerHTML = self.model.containers[rowNum].total();
+            _storage.tallysheet = self.model;
+            window.dispatchEvent(new Event('storageupdated'));
+          });
+      });
+    }
+
+    template(model) {
+      return `
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              ${each(model.meals, e => `<th>Meal ${e}</th>`)}
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${each(model.containers, (container, row)  =>
+              `<tr data-row="${row}">
+                <td class="container">
+                  <div class="${container.color}"></div>
+                </td>
+                ${each(container.meals, (m, i) =>
+                  `<td>
+                    <input class="serving-size" data-id="${i}" type="number" value="${m}" />
+                  </td>`
+                )}
+                <td class="total">${container.total()}</td>
+              </tr>`
+            )}
+          </tbody>
+        </table>`;
+    }
   };
 
-  TallySheet.render = function() {
-    _localModel = JSON.parse(window.localStorage.getItem(_getDate()));
-    var model = new TallySheet.Model(_numMeals);
-    TallySheet.elem.innerHTML = TallySheet.template(model);
-
-    [].forEach.call(document.querySelectorAll('.serving-size'), function(e) {
-        e.addEventListener('change', function(e) {
-          var index = e.target.dataset.id;
-          var row = e.target.parentElement.parentElement;
-          var rowNum = row.dataset.row;
-          model.containers[rowNum].meals[index] = e.target.valueAsNumber;
-          row.querySelector('td.total').innerHTML = model.containers[rowNum].total();
-          tallysheet.dispatchEvent(new Event('update'));
-        });
-    });
-  }
-
-  TallySheet.template = function (model) {
-    return `
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            ${each(model.meals, e => `<th>Meal ${e}</th>`)}
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${each(model.containers, (container, row)  =>
-            `<tr data-row="${row}">
-              <td class="container">
-                <div class="${container.color}"></div>
-              </td>
-              ${each(container.meals, (m, i) =>
-                `<td>
-                  <input class="serving-size" data-id="${i}" type="number" value="${m}" />
-                </td>`
-              )}
-              <td class="total">${container.total()}</td>
-            </tr>`
-          )}
-        </tbody>
-      </table>`
-  }
-
-  TallySheet.elem = document.getElementById("tallysheet");
-  TallySheet.elem.addEventListener('update', function(e) {
-    var key = _getDate();
-    window.localStorage.setItem(key, JSON.stringify(model));
-  })
+  TallySheet.Model = class {
+    constructor(numMeals) {
+      this.containers = [
+        new Container('green'),
+        new Container('purple'),
+        new Container('red'),
+        new Container('yellow'),
+        new Container('blue'),
+        new Container('orange'),
+        new Container('spoon')
+      ];
+      this.meals = range(numMeals, 1);
+    }
+  };
 
   var Pager = {};
-  _views.push(Pager);
-
-  Pager.Model = function() {
-    var date = new Date(_getDate());
-    this.selectedDate = _formatDate(date);
-
-    date.setDate(date.getDate() - 1);
-    this.previousDay = _formatDate(date);
-
-    date.setDate(date.getDate() + 2);
-    this.nextDay = _formatDate(date);
+  Pager.View = class extends View {
+    template(model) {
+      return `
+        <a href="#/${model.previousDay}">Previous Day</a>
+        <a href="#/${model.nextDay}">Next Day</a>
+        <div class="selected-date">
+          ${model.selectedDate}
+        </div>
+      `
+    }
   }
 
-  Pager.render = function() {
-    var model = new Pager.Model();
-    Pager.elem.innerHTML = Pager.template(model);
+  Pager.Model = class {
+    constructor() {
+      var date = new Date(_getDate());
+      this.selectedDate = _formatDate(date);
+
+      date.setDate(date.getDate() - 1);
+      this.previousDay = _formatDate(date);
+
+      date.setDate(date.getDate() + 2);
+      this.nextDay = _formatDate(date);
+    }
+  };
+
+  var Water = {};
+  Water.View = class extends View {
+    template(model) {
+      return `
+        <div>
+          <label class="title">Water</label>
+          ${each(model.servings, (serving, i) =>
+           `<input type='checkbox' data-id="${i}" class='serving' id="water-${i}" ${serving ? "checked" : ""} />
+            <label for="water-${i}"></label>`
+          )}
+          <input type='checkbox' id="water-completed" ${model.completed() ? "checked" : ""} />
+          <label class="completed" for="water-completed"></label>
+        </div>
+      `;
+    }
+
+    render() {
+      super.render();
+      var self = this;
+      [].forEach.call(this.elem.querySelectorAll('.serving'), function(elem) {
+        elem.addEventListener('change', function(e) {
+          var index = e.target.dataset.id;
+          self.model.servings[index] = e.target.checked;
+          self.elem.querySelector('#water-completed').checked = self.model.completed();
+          _storage.water = self.model;
+          window.dispatchEvent(new Event('storageupdated'));
+        });
+      })
+    }
   }
 
-  Pager.template = function(model) {
-    return `
-      <a href="#/${model.previousDay}">Previous Day</a>
-      <a href="#/${model.nextDay}">Next Day</a>
-      <div class="selected-date">
-        ${model.selectedDate}
-      </div>
-    `
+  Water.Model = class {
+    constructor() {
+      this.servings = Array.apply(null, Array(8));
+      if (_storage.water)
+        this.servings = this.servings.map(function(e, i) { return _storage.water.servings[i]; });
+      else
+        this.servings = this.servings.map(function(e) { return false; });
+    }
+
+    completed() {
+      return this.servings.every(function(e) { return e; });
+    }
   }
 
-  Pager.elem = document.getElementById("pager");
+  _views.push(new TallySheet.View(document.getElementById("tallysheet"), new TallySheet.Model(_numMeals)))
+  _views.push(new Pager.View(document.getElementById("pager"), new Pager.Model()));
+  _views.push(new Water.View(document.getElementById("water"), new Water.Model()));
 
   window.addEventListener('load', function() {
-    _renderViews();
-  })
+    _views.forEach(v => v.render());
+  });
 
   window.addEventListener('hashchange', function() {
-    _renderViews();
-  })
+    window.location.reload();
+  });
 
   function Container(color) {
     this.color = color;
     this.meals = Array.apply(null, Array(_numMeals)).map(function() { return ""; });
-    if (_localModel) {
-      var localContainer = _localModel.containers.filter(function(c) { return c.color == color; })[0];
+    if (_storage.tallysheet) {
+      var localContainer = _storage.tallysheet.containers.filter(function(c) { return c.color == color; })[0];
       if (localContainer)
         this.meals = localContainer.meals;
     }
@@ -133,12 +192,6 @@
 
   function _formatDate(d) {
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-  }
-
-  function _renderViews() {
-    _views.forEach(function(v) {
-      v.render();
-    })
   }
 
   function each(arr, html) {

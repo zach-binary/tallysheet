@@ -10,7 +10,7 @@
     "babel-preset-es2015": "^6.5.0"
   },
   "scripts": {
-    "build": "./node_modules/.bin/babel src -o app.js"
+    "build": "./node_modules/.bin/babel --watch src -o app.js"
   },
   "repository": {
     "type": "git",
